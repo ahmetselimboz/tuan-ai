@@ -19,7 +19,7 @@ const {
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
-const generateWithAI = require("../lib/gemini-ai");
+const generateAnalysis = require("../lib/gemini-ai");
 
 const router = require("express").Router();
 
@@ -27,7 +27,7 @@ router.get("/prompt", async (req, res) => {
   try {
 
 
-    const response = await generateWithAI()
+    const response = await generateAnalysis()
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
