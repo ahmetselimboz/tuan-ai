@@ -2,7 +2,7 @@ name: CI Pipeline
 
 on:
   push:
-    branches: ["development"]
+    branches: ["main"]
 
 jobs:
   build:
@@ -16,9 +16,9 @@ jobs:
           DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
         run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
       - name: Build the Docker image
-        run: docker build -t asb00/tuana-server:latest .
+        run: docker build -t asb00/tuan-ai:latest .
       - name: Push to DockerHub
-        run: docker push asb00/tuana-server:latest
+        run: docker push asb00/tuan-ai:latest
 
       - uses: a7ul/tar-action@v1.1.0
         with:
