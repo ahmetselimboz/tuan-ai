@@ -33,7 +33,7 @@ if (CORS_ENABLED === "true") {
 } else {
   app.use(
     cors({
-      origin: "http://localhost:6000",
+      origin: "http://localhost:3000",
       credentials: true,
     })
   );

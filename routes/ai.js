@@ -1,6 +1,6 @@
 const _enum = require("../config/enum");
 const Ai = require("../db/models/Ai");
-
+const App = require("../db/models/App");
 const auditLogs = require("../lib/auditLogs");
 const logger = require("../lib/logger/logger");
 const Response = require("../lib/response");
@@ -24,19 +24,24 @@ const getPlatformData = require("../lib/playwright");
 
 const router = require("express").Router();
 
-router.get("/prompt", async (req, res) => {
+router.post("/prompt", async (req, res) => {
   try {
-    const {link}=req.query
-    const result = await getPlatformData(link)
-    const response = await generateAnalysis(result)
+    const { body, query } = req;
+    console.log("🚀 ~ router.get ~ body:", body);
+
+    const findApp = await App.findOne({ appId: body.appId }).select("domain");
+
+
+    const result = await getPlatformData(findApp.domain)
+    const response = await generateAnalysis(result, body.prompt)
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
         response
+        
       })
     );
-
   } catch (error) {
     console.log("🚀 ~ /new-visitor ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /new-visitor", error);
@@ -44,20 +49,17 @@ router.get("/prompt", async (req, res) => {
   }
 });
 
-
 router.get("/get-platform-data", async (req, res) => {
   try {
-    const {link}=req.query
-    const result = await getPlatformData(link)
-    
+    const { link } = req.query;
+    const result = await getPlatformData(link);
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
-        result
+        result,
       })
     );
-
   } catch (error) {
     console.log("🚀 ~ /new-visitor ~ error:", error);
     auditLogs.error("" || "User", "apps-route", "POST /new-visitor", error);
@@ -65,4 +67,4 @@ router.get("/get-platform-data", async (req, res) => {
   }
 });
 
-module.exports = router
+module.exports = router;
