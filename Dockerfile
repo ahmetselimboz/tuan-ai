@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 COPY package.json ./
 RUN npm install
+RUN npx playwright install
 COPY . .
 EXPOSE 9400
 CMD [ "npm", "start" ]
