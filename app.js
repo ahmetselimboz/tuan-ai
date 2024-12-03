@@ -11,6 +11,7 @@ const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
 
 var app = express();
 console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
+console.log("🚀 ~ CORS_ENABLED:", typeof CORS_ENABLED)
 
 if (CORS_ENABLED === "true") {
   const allowedDomains = ALLOWED_DOMAINS.split(",");
