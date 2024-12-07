@@ -1,3 +1,4 @@
+const AI = require("../db/models/Ai");
 const App = require("../db/models/App");
 const User = require("../db/models/User");
 const auditLogs = require("../lib/auditLogs");
@@ -14,19 +15,106 @@ module.exports = (io) => {
         const { text, appId } = data;
 
         const findApp = await App.findOne({ appId: appId }).select(
-          "domain userId project_name"
+          "domain userId project_name userId"
         );
 
         const getUser = await User.findOne({ _id: findApp.userId }).select(
-          "name"
+          "name plans"
+        );
+        const ai = await AI.findOne({ appId: appId }).select(
+          "limitExist limit wordLimit"
         );
 
+        //console.log("🚀 ~ socket.on ~ ai:", ai);
         //console.log("🚀 ~ socket.on ~ getUser:", getUser);
+
+        const planValues = {
+          free: 5,
+          mini: 10,
+          pro: 20,
+          premium: 0,
+        };
+
+        const tokenValues = {
+          free: 1024,
+          mini: 2048,
+          pro: 3072,
+          premium: 4096,
+        };
+
+        if (ai) {
+          if (ai.limitExist == true && ai.limit == 0) {
+            socket.emit("ai_response_error", "You don't have limit");
+            return true;
+          }
+        } else {
+          const newAI = await AI({
+            userId: findApp.userId,
+            appId: appId,
+            limitExist: getUser.plans == "free" ? true : false,
+            limit: planValues[getUser.plans] ?? null,
+            wordLimit: tokenValues[getUser.plans] ?? null,
+            ai_limit: planValues[getUser.plans] ?? null,
+          }).save();
+
+          console.log("🚀 ~ socket.on ~ newAI:", newAI);
+        }
+
+        //const findAi = await AI.findOne({ appId: appId });
+        // console.log("🚀 ~ socket.on ~ findAi:", findAi);
+
+        const aiRes = await AI.findOneAndUpdate(
+          { appId: appId, "chat.chat_name": "Genel Sohbet" },
+          {
+            $push: {
+              "chat.$.messages": {
+                message: text,
+                sender: "user",
+              },
+            },
+          },
+          { new: true }
+        );
+
+        // if (aiRes) {
+        //   await AI.findOneAndUpdate(
+        //     { appId }, // Şartlara uyan belgeyi bulun
+        //     {
+        //       $inc: { limit: -1 }, // limit değerini 1 azalt
+        //     },
+        //     { new: true } // Güncellenmiş belgeyi döndür
+        //   );
+        // }
+
+        // if (!aiRes) {
+        //   await AI.findOneAndUpdate(
+        //     { appId }, // Şartlara uyan belgeyi bulun
+        //     {
+        //       $push: {
+        //         chat: { chat_name: text }, // chat dizisine yeni bir nesne ekle
+        //       },
+        //     },
+        //     { new: true, upsert: true } // Belgeyi güncelledikten sonra döndür ve belge yoksa oluştur
+        //   );
+
+        // }
+
+        //console.log("🚀 ~ socket.on ~ data:", aiRes);
+
         console.log("Received prompt:", text);
 
         const result = await getPlatformData(findApp.domain);
         // AI yanıtını stream ederek gönder
-        await generateAnalysis(result, text, getUser.name, findApp.project_name, socket);
+        await generateAnalysis(
+          appId,
+          result,
+          text,
+          
+          getUser.name,
+          findApp.project_name,
+          socket,
+          ai.wordLimit
+        );
       } catch (error) {
         console.log("🚀 ~ socket - send_message ~ error:", error);
         auditLogs.error("" || "User", "socket", "send_message", error);

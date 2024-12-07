@@ -8,6 +8,7 @@ const chalk = require("chalk");
 const cors = require("cors");
 var indexRouter = require("./routes/index");
 const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
+const resetDailyLimit = require("./lib/refreshLimit");
 
 var app = express();
 // console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
@@ -50,7 +51,7 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
-
+resetDailyLimit()
 
 app.use("/api", indexRouter);
 
