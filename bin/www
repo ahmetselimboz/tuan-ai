@@ -24,15 +24,15 @@ app.set("port", port);
  */
 
 var server = http.createServer(app);
-// const io = new Server(server, {
-//   cors: {
-//     origin: "*", // Allow all origins for Socket.IO
-//     methods: ["GET", "POST"],
-//     credentials: true, // Optional
-//   },
-// });
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for Socket.IO
+    methods: ["GET", "POST"],
+    credentials: true, // Optional
+  },
+});
 
-// socketHandler(io);
+socketHandler(io);
 /**
  * Listen on provided port, on all network interfaces.
  */

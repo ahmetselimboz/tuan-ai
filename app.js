@@ -1,5 +1,5 @@
 require("dotenv").config();
-const generateWithAI = require("./lib/gemini-ai");
+const generateWithAI = require("./lib/tuan-ai");
 var express = require("express");
 var path = require("path");
 var cookieParser = require("cookie-parser");
@@ -10,11 +10,11 @@ var indexRouter = require("./routes/index");
 const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
 
 var app = express();
-console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
-console.log("🚀 ~ CORS_ENABLED:", typeof CORS_ENABLED)
+// console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
+// console.log("🚀 ~ CORS_ENABLED:", typeof CORS_ENABLED)
 
 if (CORS_ENABLED === "true") {
-  const allowedDomains = ALLOWED_DOMAINS.split(",");
+  const allowedDomains = ALLOWED_DOMAINS.split(",").map(domain => domain.trim()); 
 
   const corsOptions = {
     origin: (origin, callback) => {

@@ -1,51 +1,47 @@
-// const { saveVisitor } = require("../services/appServices");
-// const dataSockets = require("./dataSockets");
-// const userSockets = require("./userSockets");
+const App = require("../db/models/App");
+const User = require("../db/models/User");
+const auditLogs = require("../lib/auditLogs");
+const logger = require("../lib/logger/logger");
+const getPlatformData = require("../lib/playwright");
+const generateAnalysis = require("../lib/tuan-ai");
 
-// const activeUsers = {};
+module.exports = (io) => {
+  io.on("connection", (socket) => {
+    console.log("Client connected:", socket.id);
 
-// module.exports = (io) => {
-//   io.on("connection", async (socket) => {
-//     socket.on("register", async (data) => {
-//       try {
-//         if (!activeUsers[data.appId]) {
-//           activeUsers[data.appId] = [];
-//         }
+    socket.on("user_message", async (data) => {
+      try {
+        const { text, appId } = data;
 
-//         activeUsers[data.appId].push(socket.id);
-//         socket.join(data.appId);
-        
-//         io.to(data.appId).emit("activeUsers", activeUsers[data.appId]?.length);
+        const findApp = await App.findOne({ appId: appId }).select(
+          "domain userId project_name"
+        );
 
-//         saveVisitor(data);
-//       } catch (error) {
-//         console.log("🚀 ~ socket - register ~ error:", error);
-//         auditLogs.error("" || "User", "socket", "register", error);
-//         logger.error("" || "User", "socket", "register", error);
-//       }
-//     });
+        const getUser = await User.findOne({ _id: findApp.userId }).select(
+          "name"
+        );
 
-//     dataSockets(io, socket);
-//     userSockets(io, socket, activeUsers);
+        //console.log("🚀 ~ socket.on ~ getUser:", getUser);
+        console.log("Received prompt:", text);
 
-//     socket.on("disconnect", (appId) => {
-//       try {
-//         for (let appId in activeUsers) {
-//           activeUsers[appId] = activeUsers[appId].filter(
-//             (userId) => userId !== socket.id
-//           );
+        const result = await getPlatformData(findApp.domain);
+        // AI yanıtını stream ederek gönder
+        await generateAnalysis(result, text, getUser.name, findApp.project_name, socket);
+      } catch (error) {
+        console.log("🚀 ~ socket - send_message ~ error:", error);
+        auditLogs.error("" || "User", "socket", "send_message", error);
+        logger.error("" || "User", "socket", "send_message", error);
+      }
+    });
 
-//           io.to(appId).emit("activeUsers", activeUsers[appId]?.length);
-
-//           if (activeUsers[appId].length === 0) {
-//             delete activeUsers[appId];
-//           }
-//         }
-//       } catch (error) {
-//         console.log("🚀 ~ socket - disconnect ~ error:", error);
-//         auditLogs.error("" || "User", "socket", "disconnect", error);
-//         logger.error("" || "User", "socket", "disconnect", error);
-//       }
-//     });
-//   });
-// };
+    socket.on("disconnect", () => {
+      try {
+        console.log("Client disconnected:", socket.id);
+      } catch (error) {
+        console.log("🚀 ~ socket - disconnect ~ error:", error);
+        auditLogs.error("" || "User", "socket", "disconnect", error);
+        logger.error("" || "User", "socket", "disconnect", error);
+      }
+    });
+  });
+};

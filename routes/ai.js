@@ -19,7 +19,7 @@ const {
 } = require("../services/appServices");
 const axios = require("axios");
 const puppeteer = require("puppeteer");
-const generateAnalysis = require("../lib/gemini-ai");
+const generateAnalysis = require("../lib/tuan-ai");
 const getPlatformData = require("../lib/playwright");
 
 const router = require("express").Router();
@@ -43,9 +43,9 @@ router.post("/prompt", async (req, res) => {
       })
     );
   } catch (error) {
-    console.log("🚀 ~ /new-visitor ~ error:", error);
-    auditLogs.error("" || "User", "apps-route", "POST /new-visitor", error);
-    logger.error("" || "User", "apps-route", "POST /new-visitor", error);
+    console.log("🚀 ~ /prompt ~ error:", error);
+    auditLogs.error("" || "User", "ai-route", "POST /prompt", error);
+    logger.error("" || "User", "ai-route", "POST /prompt", error);
   }
 });
 
