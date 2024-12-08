@@ -66,8 +66,7 @@ module.exports = (io) => {
           console.log("🚀 ~ socket.on ~ newAI:", newAI);
         }
 
-        //const findAi = await AI.findOne({ appId: appId });
-        // console.log("🚀 ~ socket.on ~ findAi:", findAi);
+
 
         const aiRes = await AI.findOneAndUpdate(
           { appId: appId, "chat.chat_name": "Genel Sohbet" },
@@ -83,7 +82,7 @@ module.exports = (io) => {
         );
 
         if (!aiRes) {
-          // "Genel Sohbet" bulunamadıysa yeni bir `chat` oluştur
+         
           const newChat = {
             chat_name: "Genel Sohbet",
             messages: [
@@ -99,7 +98,7 @@ module.exports = (io) => {
             {
               $push: { chat: newChat },
             },
-            { new: true, upsert: true } // Eğer `appId` yoksa yeni bir belge oluştur
+            { new: true, upsert: true }
           );
         
       
@@ -138,7 +137,6 @@ module.exports = (io) => {
           appId,
           result,
           text,
-
           getUser.name,
           findApp.project_name,
           socket,
