@@ -143,6 +143,7 @@ module.exports = (io) => {
           ai.wordLimit
         );
       } catch (error) {
+        socket.emit("ai_response_error", "AI response generation failed.");
         console.log("🚀 ~ socket - send_message ~ error:", error);
         auditLogs.error("" || "User", "socket", "send_message", error);
         logger.error("" || "User", "socket", "send_message", error);
