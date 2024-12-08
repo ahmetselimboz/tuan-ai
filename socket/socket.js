@@ -6,10 +6,16 @@ const logger = require("../lib/logger/logger");
 const getPlatformData = require("../lib/playwright");
 const generateAnalysis = require("../lib/tuan-ai");
 
+const connectedClients = new Map();
+
 module.exports = (io) => {
   io.on("connection", (socket) => {
-    console.log("Client connected:", socket.id);
-
+    if (!connectedClients.has(socket.id)) {
+      connectedClients.set(socket.id, { connectedAt: new Date() });
+      console.log(
+        `Client connected: ${socket.id}, Total clients: ${connectedClients.size}`
+      );
+    }
     socket.on("user_message", async (data) => {
       try {
         const { text, appId } = data;
@@ -109,7 +115,7 @@ module.exports = (io) => {
           appId,
           result,
           text,
-          
+
           getUser.name,
           findApp.project_name,
           socket,
@@ -124,7 +130,10 @@ module.exports = (io) => {
 
     socket.on("disconnect", () => {
       try {
-        console.log("Client disconnected:", socket.id);
+        connectedClients.delete(socket.id);
+        console.log(
+          `Client disconnected: ${socket.id}, Total clients: ${connectedClients.size}`
+        );
       } catch (error) {
         console.log("🚀 ~ socket - disconnect ~ error:", error);
         auditLogs.error("" || "User", "socket", "disconnect", error);
