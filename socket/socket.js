@@ -82,6 +82,29 @@ module.exports = (io) => {
           { new: true }
         );
 
+        if (!aiRes) {
+          // "Genel Sohbet" bulunamadıysa yeni bir `chat` oluştur
+          const newChat = {
+            chat_name: "Genel Sohbet",
+            messages: [
+              {
+                message: text,
+                sender: "user",
+              },
+            ],
+          };
+        
+          const updatedAI = await AI.findOneAndUpdate(
+            { appId: appId },
+            {
+              $push: { chat: newChat },
+            },
+            { new: true, upsert: true } // Eğer `appId` yoksa yeni bir belge oluştur
+          );
+        
+      
+        }
+
         // if (aiRes) {
         //   await AI.findOneAndUpdate(
         //     { appId }, // Şartlara uyan belgeyi bulun
