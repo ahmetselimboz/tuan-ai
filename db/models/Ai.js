@@ -56,7 +56,7 @@ const schema = new mongoose.Schema(
       required: true,
       default:10
     },
-
+    platform_data:{}
   },
   { versionKey: false, timestamps: true }
 );

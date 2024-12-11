@@ -18,7 +18,7 @@ module.exports = (io) => {
     }
     socket.on("user_message", async (data) => {
       try {
-        const { text, appId } = data;
+        const { text, appId, chatId } = data;
 
         const findApp = await App.findOne({ appId: appId }).select(
           "domain userId project_name userId"
@@ -69,7 +69,7 @@ module.exports = (io) => {
 
 
         const aiRes = await AI.findOneAndUpdate(
-          { appId: appId, "chat.chat_name": "Genel Sohbet" },
+          { appId: appId, "chat._id": chatId },
           {
             $push: {
               "chat.$.messages": {
@@ -80,11 +80,11 @@ module.exports = (io) => {
           },
           { new: true }
         );
-
+        let newChatId = null
         if (!aiRes) {
          
           const newChat = {
-            chat_name: "Genel Sohbet",
+            chat_name: text,
             messages: [
               {
                 message: text,
@@ -100,47 +100,43 @@ module.exports = (io) => {
             },
             { new: true, upsert: true }
           );
-        
+          const addedChat = updatedAI.chat[updatedAI.chat.length - 1]; // Son eklenen eleman
+          newChatId = addedChat._id;
+          console.log("🚀 ~ socket.on ~ newChatId:", newChatId)
       
         }
 
-        // if (aiRes) {
-        //   await AI.findOneAndUpdate(
-        //     { appId }, // Şartlara uyan belgeyi bulun
-        //     {
-        //       $inc: { limit: -1 }, // limit değerini 1 azalt
-        //     },
-        //     { new: true } // Güncellenmiş belgeyi döndür
-        //   );
-        // }
-
-        // if (!aiRes) {
-        //   await AI.findOneAndUpdate(
-        //     { appId }, // Şartlara uyan belgeyi bulun
-        //     {
-        //       $push: {
-        //         chat: { chat_name: text }, // chat dizisine yeni bir nesne ekle
-        //       },
-        //     },
-        //     { new: true, upsert: true } // Belgeyi güncelledikten sonra döndür ve belge yoksa oluştur
-        //   );
-
-        // }
-
-        //console.log("🚀 ~ socket.on ~ data:", aiRes);
+       
 
         console.log("Received prompt:", text);
 
-        const result = await getPlatformData(findApp.domain);
+        const result = await AI.findOne({appId:appId}).select("platform_data")
+    
+
+        if(!result.platform_data){
+          const platformDatas = await getPlatformData(findApp.domain);
+          await AI.findOneAndUpdate({appId:appId}, {platform_data:platformDatas}, {new:true, upsert: true})
+        }
+
+        const getChat = await AI.aggregate([
+          { $match: { appId: appId } }, // appId'yi filtrele
+          { $unwind: "$chat" }, // chat dizisini aç
+          { $match: { "chat._id": newChatId } }, // chat_name'i eşleştir
+          { $project: { "chat.history": 1, _id: 0 } }, // Sadece messages'ı seç
+        ]);
+        console.log("🚀 ~ socket.on ~ getChat:", getChat)
+        const history = getChat[0].chat.history;
+    
         // AI yanıtını stream ederek gönder
         await generateAnalysis(
           appId,
-          result,
+          result.platform_data,
           text,
           getUser.name,
           findApp.project_name,
           socket,
-          ai.wordLimit
+          ai.wordLimit,
+          history
         );
       } catch (error) {
         socket.emit("ai_response_error", "AI response generation failed.");
@@ -150,12 +146,15 @@ module.exports = (io) => {
       }
     });
 
-    socket.on("disconnect", () => {
+   
+
+    socket.on("disconnect", (reason) => {
       try {
         connectedClients.delete(socket.id);
         console.log(
-          `Client disconnected: ${socket.id}, Total clients: ${connectedClients.size}`
+          `Client disconnected: ${socket.id}, Total clients: ${connectedClients.size}, Reason: ${reason}`
         );
+        socket.emit("disconnected", reason)
       } catch (error) {
         console.log("🚀 ~ socket - disconnect ~ error:", error);
         auditLogs.error("" || "User", "socket", "disconnect", error);
