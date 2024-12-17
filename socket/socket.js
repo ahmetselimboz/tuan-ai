@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const AI = require("../db/models/Ai");
 const App = require("../db/models/App");
 const User = require("../db/models/User");
@@ -18,7 +19,7 @@ module.exports = (io) => {
     }
     socket.on("user_message", async (data) => {
       try {
-        const { text, appId, chatId } = data;
+        const { text, appId, selectedChat } = data;
 
         const findApp = await App.findOne({ appId: appId }).select(
           "domain userId project_name userId"
@@ -66,56 +67,63 @@ module.exports = (io) => {
           console.log("🚀 ~ socket.on ~ newAI:", newAI);
         }
 
+        // Kullanıcı mesajını ilgili sohbetin "chat.messages" alanına ekliyoruz.
+        let newChatId = selectedChat; // Eğer yeni bir sohbet oluşturulursa ID'sini burada tutuyoruz.
 
-
-        const aiRes = await AI.findOneAndUpdate(
-          { appId: appId, "chat._id": chatId },
-          {
-            $push: {
-              "chat.$.messages": {
-                message: text,
-                sender: "user",
-              },
-            },
-          },
-          { new: true }
+        console.log("🚀 ~ socket.on ~ selectedChat:", selectedChat);
+        console.log("🚀 ~ socket.on ~ selectedChat:", typeof selectedChat);
+        const isSaveHistory = await AI.findOne({ appId }).select(
+          "save_history"
         );
-        let newChatId = null
-        if (!aiRes) {
-         
-          const newChat = {
-            chat_name: text,
-            messages: [
-              {
-                message: text,
-                sender: "user",
-              },
-            ],
-          };
-        
-          const updatedAI = await AI.findOneAndUpdate(
-            { appId: appId },
-            {
-              $push: { chat: newChat },
-            },
-            { new: true, upsert: true }
-          );
-          const addedChat = updatedAI.chat[updatedAI.chat.length - 1]; // Son eklenen eleman
-          newChatId = addedChat._id;
-          console.log("🚀 ~ socket.on ~ newChatId:", newChatId)
-      
-        }
+        console.log("🚀 ~ socket.on ~ isSaveHistory:", isSaveHistory)
+        const chatExist = await AI.findOne(
+          { appId: appId, "chat._id": selectedChat }, // Filtreleme
+          { "chat.$": 1 } // Sadece eşleşen chat dizisinin elemanını getir
+        );
 
-       
+        console.log("🚀 ~ socket.on ~ chatExist:", chatExist);
+        if (isSaveHistory.save_history) {
+          if (!chatExist) {
+            const newChat = {
+              chat_name: text, // İlk mesaj chat ismi olarak atanıyor.
+              messages: [{ message: text, sender: "user" }],
+            };
+  
+            const updatedAI = await AI.findOneAndUpdate(
+              { appId },
+              { $push: { chat: newChat } },
+              { new: true, upsert: true }
+            );
+  
+            // Eklenen son sohbetin ID'sini alıyoruz.
+            newChatId = updatedAI.chat[updatedAI.chat.length - 1]._id;
+          } else {
+        
+            const addedmessage = await AI.findOneAndUpdate(
+              { appId, "chat._id": selectedChat },
+              {
+                $push: { "chat.$.messages": { message: text, sender: "user" } },
+              },
+              { new: true }
+            );
+        
+          }
+        }
+      
 
         console.log("Received prompt:", text);
 
-        const result = await AI.findOne({appId:appId}).select("platform_data")
-    
+        const result = await AI.findOne({ appId: appId }).select(
+          "platform_data"
+        );
 
-        if(!result.platform_data){
+        if (!result.platform_data) {
           const platformDatas = await getPlatformData(findApp.domain);
-          await AI.findOneAndUpdate({appId:appId}, {platform_data:platformDatas}, {new:true, upsert: true})
+          await AI.findOneAndUpdate(
+            { appId: appId },
+            { platform_data: platformDatas },
+            { new: true, upsert: true }
+          );
         }
 
         const getChat = await AI.aggregate([
@@ -124,9 +132,10 @@ module.exports = (io) => {
           { $match: { "chat._id": newChatId } }, // chat_name'i eşleştir
           { $project: { "chat.history": 1, _id: 0 } }, // Sadece messages'ı seç
         ]);
-        console.log("🚀 ~ socket.on ~ getChat:", getChat)
-        const history = getChat[0].chat.history;
-    
+        //console.log("🚀 ~ socket.on ~ getChat:", getChat);
+        const history = getChat[0]?.chat?.history;
+        console.log("🚀 ~ socket.on ~ newChatId:", newChatId);
+
         // AI yanıtını stream ederek gönder
         await generateAnalysis(
           appId,
@@ -136,7 +145,8 @@ module.exports = (io) => {
           findApp.project_name,
           socket,
           ai.wordLimit,
-          history
+          history,
+          newChatId
         );
       } catch (error) {
         socket.emit("ai_response_error", "AI response generation failed.");
@@ -146,7 +156,6 @@ module.exports = (io) => {
       }
     });
 
-   
 
     socket.on("disconnect", (reason) => {
       try {
@@ -154,7 +163,7 @@ module.exports = (io) => {
         console.log(
           `Client disconnected: ${socket.id}, Total clients: ${connectedClients.size}, Reason: ${reason}`
         );
-        socket.emit("disconnected", reason)
+        socket.emit("disconnected", reason);
       } catch (error) {
         console.log("🚀 ~ socket - disconnect ~ error:", error);
         auditLogs.error("" || "User", "socket", "disconnect", error);

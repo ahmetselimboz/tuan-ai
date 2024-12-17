@@ -51,23 +51,20 @@ router.post("/get-ai", async (req, res) => {
       "limit limitExist"
     );
   
-    const getChat = await AI.aggregate([
-      { $match: { appId: body.appId } }, // appId'yi filtrele
-      { $unwind: "$chat" }, // chat dizisini aç
-      { $sort: { "chat.date": -1 } }, // date alanına göre azalan sıralama (en yeni önce)
-      { $limit: 1 }, // Sadece en yeni elemanı seç
-      { $project: { "chat.messages": 1, "chat._id": 1, _id: 0 } }, // messages ve _id'yi seç
-    ]);
+    //const getChat = await AI.findOne({ appId: body.appId, "chat._id": body.selectedChat } ).select("chat.messages")
+    const getChat = await AI.findOne({ appId: body.appId, "chat._id": body.selectedChat }, { "chat.$": 1 }); // Sadece eşleşen chat'i getirir
+    const messages = getChat?.chat[0]?.messages || [];
     
+    console.log("🚀 ~ router.post ~ getChat:", getChat)
 
-    const messages = getChat[0].chat.messages;
+    //const messages = getChat[0]?.chat?.messages;
 
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
         ai: findApp,
         messages:messages,
-        chatId: getChat[0].chat._id
+       
       })
     );
   } catch (error) {
@@ -116,7 +113,7 @@ router.post("/get-chat-list", async (req, res) => {
       { $project: { chat_name: 1, _id: 1 } }, // Gerekli alanları seç
     ]);
     
-    console.log(chatList)
+    //console.log(chatList)
     return res.status(_enum.HTTP_CODES.OK).json(
       Response.successResponse({
         code: _enum.HTTP_CODES.OK,
