@@ -134,10 +134,10 @@ module.exports = (io) => {
         ]);
         //console.log("🚀 ~ socket.on ~ getChat:", getChat);
         const history = getChat[0]?.chat?.history;
-        console.log("🚀 ~ socket.on ~ newChatId:", newChatId);
+       // console.log("🚀 ~ socket.on ~ newChatId:", newChatId);
 
         // AI yanıtını stream ederek gönder
-        await generateAnalysis(
+        const status= await generateAnalysis(
           appId,
           result.platform_data,
           text,
@@ -148,6 +148,14 @@ module.exports = (io) => {
           history,
           newChatId
         );
+
+        const rights = await getLimit(appId);
+        
+        socket.emit("ai_rights", rights);
+        
+        console.log("🚀 ~ socket.on ~ result:", status)
+        console.log("🚀 ~ socket.on ~ rights:", rights)
+        
       } catch (error) {
         socket.emit("ai_response_error", "AI response generation failed.");
         console.log("🚀 ~ socket - send_message ~ error:", error);
@@ -156,6 +164,15 @@ module.exports = (io) => {
       }
     });
 
+
+    async function getLimit(appId) {
+      try {
+        const data = await AI.findOne({ appId }).select("limit");
+        return data.limit;
+      } catch (error) {
+        console.error("Error saving response to database:", error);
+      }
+    }
 
     socket.on("disconnect", (reason) => {
       try {
