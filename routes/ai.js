@@ -6,17 +6,56 @@ const logger = require("../lib/logger/logger");
 const Response = require("../lib/response");
 const config = require("../config/environments");
 
+// const {
+//   findTopPage,
+//   newVisitors,
+//   calculateSessionDuration,
+//   lineCard,
+//   deviceCard,
+//   pageCard,
+//   locationCard,
+//   sourcesCard,
+//   languagesCard,
+// } = require("../services/appServices");
+
 const {
-  findTopPage,
-  newVisitors,
-  calculateSessionDuration,
-  lineCard,
-  deviceCard,
-  pageCard,
-  locationCard,
-  sourcesCard,
-  languagesCard,
-} = require("../services/appServices");
+  getMetaTitle,
+  getMetaDescription,
+  getMetaKeywords,
+  getMetaAuthor,
+  getMetaRobots,
+  getMetaPublisher,
+  getTwitterCard,
+  getFacebookOG,
+  getMetaCharset,
+  getLanguage,
+  getExternalLinks,
+  getHeadingStructure,
+  getFontSizes,
+  getStructuredData,
+  check404,
+  getCanonical,
+  getIframes,
+  getTables,
+  checkAMP,
+  getFaviconFunc,
+  checkResponsive,
+  checkMobileCompatibility,
+  getImagesWithoutAlt,
+  getLinksWithoutTitle,
+  getServerConfiguration,
+  analyzeKeywords,
+  getResourceCounts,
+  analyzePageSpeed,
+  getCodeToTextRatio,
+  analyzeDomain,
+  getRobotsTxt,
+  verifyRedirects,
+  checkBrokenLinks,
+  findBacklinkOpportunities
+} = require("../lib/SEO/seo");
+
+
 const axios = require("axios");
 const puppeteer = require("puppeteer");
 const generateAnalysis = require("../lib/tuan-ai");
@@ -25,6 +64,8 @@ const User = require("../db/models/User");
 const AI = require("../db/models/Ai");
 
 const router = require("express").Router();
+
+
 
 // router.get("/get-platform-data", async (req, res) => {
 //   try {
@@ -129,6 +170,83 @@ router.post("/get-chat-list", async (req, res) => {
       error
     );
     logger.error("" || "User", "ai-route", "POST /get-chat-list", error);
+  }
+});
+
+
+
+router.post("/get-seo", async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    const { body } = req;
+    const { appId, query } = body;
+    console.log("🚀 ~ router.post ~ appId:", appId)
+    const { firstdate, lastdate } = query;
+
+    // Fetch the domain from the database
+    const result = await App.findOne({ appId: appId }).select("domain");
+
+    if (!result || !result.domain) {
+      return res
+        .status(_enum.HTTP_CODES.NOT_FOUND)
+        .json(Response.errorResponse("Domain not found for the given appId"));
+    }
+
+    const url = "https://" + result.domain;
+    const domain = result.domain;
+    console.log("🚀 ~ router.post ~ url:", url);
+    console.log("🚀 ~ router.post ~ domain:", domain);
+
+    const data = {
+      metaTitle: await getMetaTitle(appId,url),
+      metaDescription: await getMetaDescription(appId, url),
+      metaKeywords: await getMetaKeywords(url),
+      metaAuthor: await getMetaAuthor(url),
+      metaRobots: await getMetaRobots(url),
+      metaPublisher: await getMetaPublisher(url),
+      twitterCard: await getTwitterCard(url),
+      facebookOG: await getFacebookOG(url),
+      metaCharset: await getMetaCharset(url),
+      language: await getLanguage(url),
+      externalLinks: await getExternalLinks(url),
+      headingStructure: await getHeadingStructure(url),
+      fontSizes: await getFontSizes(url),
+      structuredData: await getStructuredData(url),
+      notFoundPage: await check404(url),
+      canonicalTag: await getCanonical(url),
+      iframeUsage: await getIframes(url),
+      tableUsage: await getTables(url),
+      ampUsage: await checkAMP(url),
+      faviconUsage: await getFaviconFunc(url),
+      responsiveDesign: await checkResponsive(url),
+      mobileCompatibility: await checkMobileCompatibility(url),
+      imagesWithoutAlt: await getImagesWithoutAlt(url),
+      linksWithoutTitle: await getLinksWithoutTitle(url),
+      serverConfig: await getServerConfiguration(url),
+      keywordAnalysis: await analyzeKeywords(url),
+      resourceSummary: await getResourceCounts(url),
+      pageSpeed: await analyzePageSpeed(domain, url),
+      codeToTextRatio: await getCodeToTextRatio(url),
+      //domainAnalysis: await analyzeDomain(domain),
+      robotsTxt: await getRobotsTxt(url),
+      redirectionValidation: await verifyRedirects(url),
+      brokenLinks: await checkBrokenLinks(url),
+      //backlinkOpportunities: await findBacklinkOpportunities(url),
+    };
+
+    return res.status(_enum.HTTP_CODES.OK).json(
+      Response.successResponse({
+        code: _enum.HTTP_CODES.OK,
+        data,
+      })
+    );
+  } catch (error) {
+    console.log("🚀 ~ router.post ~ error:", error);
+    auditLogs.error("" || "User", "ai-route", "/get-seo", error);
+    logger.error("" || "User", "ai-route", "/get-seo", error);
+    res
+      .status(_enum.HTTP_CODES.INT_SERVER_ERROR)
+      .json(Response.errorResponse(error));
   }
 });
 

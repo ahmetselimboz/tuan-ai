@@ -7,8 +7,8 @@ const customMorganLogger = require("./lib/morgan");
 const chalk = require("chalk");
 const cors = require("cors");
 var indexRouter = require("./routes/index");
-const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
 const resetDailyLimit = require("./lib/refreshLimit");
+const { CORS_ENABLED, ALLOWED_DOMAINS } = require("./config/environments");
 
 var app = express();
 // console.log("🚀 ~ CORS_ENABLED:", CORS_ENABLED)
@@ -21,7 +21,10 @@ if (CORS_ENABLED === "true") {
     origin: (origin, callback) => {
       console.log("🚀 ~ origin:", origin);
       console.log("🚀 ~ allowedDomains.includes(origin):", allowedDomains.includes(origin));
-      if (!origin || allowedDomains.includes(origin)) {
+      const normalizedDomains = allowedDomains.map(url => url.replace(/\/$/, ''));
+      const incomingOrigin = (origin || "").replace(/\/$/, '');
+      
+      if (!origin || normalizedDomains.includes(incomingOrigin)) {
         callback(null, true);
       } else {
         console.log("🚀 ~ CORS:", "Not allowed by CORS");
